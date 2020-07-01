@@ -1,0 +1,4 @@
+*.env
+init-mongo.js
+.vscode/
+__pychache__/

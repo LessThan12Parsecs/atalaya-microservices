@@ -1,0 +1,87 @@
+version: '3.7'
+
+services:
+  explorer_service:
+    build: ./services/perimeter-explorer
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./services/perimeter-explorer/:/app/
+      - $HOME/.aws/credentials:/home/app/.aws/credentials:ro
+    ports:
+      - 8001:8000
+    environment:
+      # - DATABASE_URI=
+      - CAST_SERVICE_HOST_URL=http://explorer_service:8000/api/v1/explorer/
+    # # depends_on:
+    #   - perimeter_db
+  
+  securizer_service:
+    build: ./services/securizer
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./services/securizer/:/app/
+      - $HOME/.aws/credentials:/home/app/.aws/credentials:ro
+    ports:
+      - 8002:8000
+    environment:
+      # - DATABASE_URI=
+      - CAST_SERVICE_HOST_URL=http://securizer_service:8000/api/v1/securizer/
+    # # depends_on:
+    #   - perimeter_db
+
+  listener_service:
+    build: ./services/changes-listener
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./services/changes-listener/:/app/
+      - $HOME/.aws/credentials:/home/app/.aws/credentials:ro
+    ports:
+      - 8003:8000
+    environment:
+      # - DATABASE_URI=
+      - CAST_SERVICE_HOST_URL=http://listener_service:8000/api/v1/listener/
+    # # depends_on:
+    #   - perimeter_db
+    
+  cloud_configurator_service:
+    build: ./services/cloud-configurator
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./services/cloud-configurator/:/app/
+      - $HOME/.aws/credentials:/home/app/.aws/credentials:ro
+    ports:
+      - 8004:8000
+    environment:
+      # - DATABASE_URI=
+      - CAST_SERVICE_HOST_URL=http://cloud_configurator_service:8000/api/v1/cloud_configurator/
+    # # depends_on:
+    #   - perimeter_db
+      
+  
+
+  # perimeter_db:
+  #   image: mongo
+  #   container_name: 'my-mongo-container'
+  #   environment:
+  #     - MONGO_INITDB_DATABASE=atalaya-test
+  #     - MONGO_INITDB_ROOT_USERNAME=atalaya
+  #     - MONGO_INITDB_ROOT_PASSWORD=atalayaPWD
+  #   volumes:
+  #     - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+  #     - ./mongo-volume:/data/db
+  #   ports:
+  #     - '27017-27019:27017-27019'
+
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx_config.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - explorer_service
+      - securizer_service
+      - cloud_configurator_service
+
+# volumes:
