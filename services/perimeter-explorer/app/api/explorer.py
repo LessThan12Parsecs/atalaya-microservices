@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 
 
-session = boto3.Session(region_name="eu-west-2")
+session = boto3.Session(profile_name="atalaya")
 explorer = APIRouter()
 
 # EC2, Security Groups and VPCs
@@ -25,7 +25,7 @@ async def ec2_list_instances():
     ec2 = session.client('ec2')
     response = ec2.describe_instances()
     # store_mongo(response,'EC2_INSTANCES')
-    return json.dumps(response['Reservations'][0], indent=1, default=str)
+    return response['Reservations'][0]
 
 @explorer.get('/insecure_groups',status_code=201)
 async def list_insecure_groups():
@@ -41,7 +41,7 @@ async def list_insecure_groups():
                         {'Security Group': sg['GroupName'],
                             'Port': ipPerm['FromPort']})
     # store_mongo(response, 'INSECURE_GROUPS')
-    print(json.dumps(insecureGroups, indent=1, default=str))
+    return insecureGroups
 
 @explorer.get('/vpcs',status_code=201)
 async def list_vpcs():
@@ -49,7 +49,7 @@ async def list_vpcs():
     ec2 = session.client('ec2')
     response = ec2.describe_vpcs()
     # store_mongo(response, 'VPCS')
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 @explorer.get('/security_groups',status_code=201)
 async def list_security_groups():
@@ -58,7 +58,7 @@ async def list_security_groups():
     response = ec2.describe_security_groups()
     # store(response,'SECURITY_GROUPS')
     # store_mongo(response, 'SECURITY_GROUPS')
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 @explorer.get('/iam_users',status_code=201)
 async def iam_list_users():
@@ -70,7 +70,7 @@ async def iam_list_users():
         iamuser['Policies'] = policies
         groups = iam.list_groups_for_user(UserName=iamuser['UserName'])
         iamuser['Groups'] = groups
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 
 @explorer.get('/iam_groups',status_code=201)
@@ -78,21 +78,21 @@ async def iam_list_groups():
     """ List IAM groups in account """
     iam = session.client('iam')
     response = iam.list_groups()
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 @explorer.get('/iam_roles',status_code=201)
 async def iam_list_roles():
     """ List IAM roles in account """
     iam = session.client('iam')
     response = iam.list_roles()
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 @explorer.get('/iam_policies',status_code=201)
 async def iam_list_policies():
     """ List IAM policies in account """
     iam = session.client('iam')
     response = iam.list_policies()
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 ############# LAMBDAS #############
 
@@ -102,7 +102,7 @@ async def lambdas_list():
     lmda = session.client('lambda')
     response = lmda.list_functions()
   
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 ############# ORGANIZATIONS #############
 
@@ -112,7 +112,7 @@ async def org_list_accounts():
     org = session.client('organizations')
     response = org.list_accounts()
   
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 @explorer.get('/org_units',status_code=201)
 async def org_organization_units():
@@ -120,7 +120,7 @@ async def org_organization_units():
     org = session.client('organizations')
     response = org.list_accounts()
    
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 
 ############# RDS #############
@@ -131,7 +131,7 @@ async def rds_list_databases():
     rds = session.client('rds')
     response = rds.describe_db_instances()
     
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 ############# S3  #############
 
@@ -157,7 +157,7 @@ async def s3_list_buckets():
 
         except: #TODO: not really, could be other exceptions
             bucket['Encryption'] = 'NONE'
-    print(json.dumps(response, indent=1, default=str))
+    return response
 
 @explorer.get('/s3_uncrypted_buckets',status_code=201)
 async def s3_list_unencrypted_buckets():
@@ -174,14 +174,14 @@ async def s3_list_unencrypted_buckets():
         except: #TODO: not really, could be other exceptions
             bucket['Encryption'] = 'NONE'
             unencryptedBuckets.append(bucket)
-    print(json.dumps(unencryptedBuckets, indent=1, default=str))
+    return unencryptedBuckets
 
 @explorer.get('/s3_policies',status_code=201)
 async def s3_get_bucket_policy(bucketName):
     """ Get Bucket Policy by bucketName """
     s3 = session.client('s3')
     result = s3.get_bucket_policy(Bucket='bucketName')
-    print(json.dumps(result, indent=1, default=str))
+    return result
 
 
 ############# CLOUDWATCH #############
@@ -190,4 +190,4 @@ async def get_cloudwatch_alarms():
     """ List cloudwatch Alarms """
     cloudwatch = session.client('cloudwatch')
     response = cloudwatch.describe_alarms()
-    print(json.dumps(response, indent=1, default=str))
+    return response
