@@ -4,8 +4,13 @@ import json
 import dateutil.parser
 import time
 # from backup import store,store_mongo
-from dictdiffer import diff
 import datetime
+#TODO: Move this to models.aws
+from pydantic import BaseModel 
+class Account(BaseModel):
+    name: str
+    email: str
+    id: str
 
 from fastapi import APIRouter, HTTPException
 from typing import List
@@ -18,7 +23,7 @@ securizer = APIRouter()
 async def test():
     return {"Securizer": "working"}
 
-@securizer.post('/secure_and_tag_sg/',status_code=201)
+@securizer.get('/secure_and_tag_sg/',status_code=201)
 async def secure_sg_and_tag():
     """ Limit ip addresses to insecure groups and tag resources """
     ec2 = session.client('ec2')
@@ -63,4 +68,41 @@ async def secure_sg_and_tag():
                 },
             ]
         )
-    print("New access rules for security groups applied")
+    return "New access rules for security groups applied"
+
+
+@securizer.get('/s3_encrypt_all/',status_code=201)
+async def s3_encrypt_all():
+    """ Enable encryption in all buckets for new data """
+    s3 = session.client('s3')
+    response = s3.list_buckets()
+    for bucket in response['Buckets']:
+        s3.put_bucket_encryption(
+            Bucket=bucket['Name'],
+            ServerSideEncryptionConfiguration={
+                'Rules': [
+                    {
+                        'ApplyServerSideEncryptionByDefault': {
+                            'SSEAlgorithm': 'AES256',
+                        }
+                    },
+                ]
+            }
+    )
+    print("All S3 Buckets encryptation activated")
+
+
+@securizer.post('/s3_set_pab_account',status_code=201)
+async def s3_set_pab_to_account(account:Account):
+    """ Set public access block to account accountID """
+    s3 = session.client('s3')
+    s3.put_public_access_block(
+        PublicAccessBlockConfiguration={
+            'BlockPublicAcls': True,
+            'IgnorePublicAcls': True,
+            'BlockPublicPolicy': True,
+            'RestrictPublicBuckets': True
+        },
+        AccountId=account.id
+    )
+    print("Account id" + account.id + " Has blocked public access to new S3 Buckets")

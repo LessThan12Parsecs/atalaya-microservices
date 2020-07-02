@@ -32,7 +32,6 @@ services:
     ports:
       - 8003:8000
     environment:
-      
       - CAST_SERVICE_HOST_URL=http://listener_service:8000/api/v1/listener/
   
   cloud_configurator_service:
