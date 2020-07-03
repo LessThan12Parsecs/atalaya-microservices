@@ -5,15 +5,12 @@ import dateutil.parser
 import time
 import click
 # from backup import store,store_mongo
+from dictdiffer import diff
 import datetime
 
 from fastapi import APIRouter, HTTPException
 from typing import List
 
 
-session = boto3.Session()
-listener = APIRouter()
-
-@listener.get('/')
-async def test(): #TODO: 
-    return {"Listener": "working"}
+session = boto3.Session(profile_name='atalaya')
+explorer = APIRouter()

@@ -21,6 +21,10 @@ class S3Bucket(BaseModel):
 class User(BaseModel):
     username: str
 
+class CloudTrail(BaseModel):
+    bucketName: str
+    trailName: str
+
 session = boto3.Session()
 cloud_configurator = APIRouter()
 
@@ -79,7 +83,7 @@ async def s3_create_bucket(bucket: S3Bucket): #
     print(bucket.name + " Created")
 
 
-#TODO: 
+#FIXME: 
 @cloud_configurator.post('/create_log_user',status_code=201)
 async def create_and_assing_log_user(user:User):
     """ Creates and assing log user to access S3 Bucket """
@@ -146,3 +150,77 @@ async def create_and_assing_log_user(user:User):
     iam.create_user(UserName='TestLogRead')
     iam.add_user_to_group(UserName='TestLogRead', GroupName='ReadOnlyS3') #TODO: TEST THIS
     print("Log user " + userName + "Created")
+
+
+
+@cloud_configurator.post('/create_cloud_trail',status_code=201)
+async def cloud_trail(cloudtrail: CloudTrail): #TODO: this is just an example policy
+    """ Creates a cloudtrail trail with trailName and saving to bucketName"""
+    cloudTrail = session.client('cloudtrail')
+    policyString = json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AWSCloudTrailAclCheck20150319",
+                "Effect": "Allow",
+                "Principal": {"Service": "cloudtrail.amazonaws.com"},
+                "Action": "s3:GetBucketAcl",
+                "Resource": "arn:aws:s3:::"+cloudtrail.bucketName,
+            },
+            {
+                "Sid": "AWSCloudTrailWrite20150319",
+                "Effect": "Allow",
+                "Principal": {"Service": "cloudtrail.amazonaws.com"},
+                "Action": "s3:PutObject",
+                "Resource": "arn:aws:s3:::"+ cloudtrail.bucketName + "/*",
+                "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
+            }
+        ]
+    })
+    s3 = session.client('s3')
+    s3.put_bucket_policy(Bucket=cloudtrail.bucketName, Policy=policyString)
+    response = cloudTrail.create_trail(
+        Name=cloudtrail.trailName,
+        S3BucketName=cloudtrail.bucketName,
+        # S3KeyPrefix='string',
+        # SnsTopicName='string',
+        IncludeGlobalServiceEvents=True,
+        IsMultiRegionTrail=True,
+        EnableLogFileValidation=True,
+        # CloudWatchLogsLogGroupArn='string',
+        # CloudWatchLogsRoleArn='string',
+        # KmsKeyId='string',
+        IsOrganizationTrail=False,
+        TagsList=[
+            {
+                'Key': 'Type',
+                'Value': 'LOGTEST'
+            },
+        ]
+    )
+    # arn:aws:cloudtrail:eu-west-1:142790238724:trail/trialTest
+    print(json.dumps(response, indent=1, default=str))
+
+# @cloud_configurator.get('/cf_create_stack_set',status_code=201)
+#async def cf_create_stack_set():
+#     """ Create AtalayaFormationTemplate stackset on cloudformation """
+#     cloudform = session.client('cloudformation')
+#     stack = open('stacks/AtalayaFormationTemplate.yaml').read()
+#     response = cloudform.create_stack_set(
+#       StackSetName="StackSetTest", TemplateBody=stack, Capabilities=['CAPABILITY_NAMED_IAM'] #TODO: Handle if already exists
+#     )
+#     print(response)
+# @cloud_configurator.get('/stackset_to_account',status_code=201)
+#async def set_stackset_to_accounts():
+#     """ Set stackset instances to children accounts """
+#     cloudform = session.client('cloudformation')
+#     org = session.client('organizations')
+#     accounts = org.list_accounts()
+#     response = cloudform.create_stack_instances(
+#         StackSetName='StackSetTest', #TODO: add real name 
+#         Accounts = [
+#            '049447156073'
+#         ],
+#         Regions = ['eu-west-1']
+#     )
+#     print(response)
